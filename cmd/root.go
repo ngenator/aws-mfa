@@ -26,6 +26,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws/external"
 	"github.com/spf13/cobra"
+	"github.com/ngenator/aws-mfa/mfa"
 )
 
 var (
@@ -40,12 +41,18 @@ var (
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
+	Version: "0.1",
 	Use:   "aws-mfa",
+	Args: cobra.ExactArgs(1),
 	Short: "Refreshes or generates temporary AWS credentials",
-	Long: `Refreshes or generates temporary AWS credentials via STS. If you already have credentials with an
+	Long: `Refreshes or generates temporary AWS credentials via STS. If you use the '--mfa' flag, the ARN will be
+stored in the credentials file so you don't have to pass it every time. If you already have credentials with an
 expiration that's an hour out or further, they won't be refreshed unless you use the '--force' flag.`,
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		profile = args[0]
+	},
 	Run: func(cmd *cobra.Command, args []string) {
-		options := Options{
+		options := mfa.Options{
 			CredentialsFileLocation: credentialsFile,
 			Profile:                 profile,
 			ProfileSuffix:           suffix,
@@ -55,7 +62,7 @@ expiration that's an hour out or further, they won't be refreshed unless you use
 			Verbose:                 verbose,
 		}
 
-		refresher := NewRefresher(options)
+		refresher := mfa.NewRefresher(options)
 		refresher.Refresh()
 	},
 }
@@ -72,11 +79,11 @@ func init() {
 	rootCmd.MarkFlagRequired("profile")
 	rootCmd.MarkFlagFilename("credentials")
 
-	rootCmd.Flags().StringVarP(&credentialsFile, "credentials", "c", external.DefaultSharedCredentialsFilename(), "Path to the AWS credentials file")
-	rootCmd.Flags().StringVarP(&profile, "profile", "p", "", "The profile for which we will generate temporary credentials")
-	rootCmd.Flags().DurationVarP(&duration, "duration", "d", time.Hour*36, "Duration for which the temporary credentials are valid. Min: 15m, Max: 36h")
-	rootCmd.Flags().StringVarP(&suffix, "suffix", "s", "permanent", "The suffix we will append to the profile where the temporary credentials are stored, ends up in the form <profile>-<suffix>")
+	rootCmd.PersistentFlags().StringVarP(&credentialsFile, "credentials", "c", external.DefaultSharedCredentialsFilename(), "path to AWS shared credentials file")
+	//rootCmd.PersistentFlags().StringVarP(&profile, "profile", "p", "", "profile used to store temporary credentials")
+	rootCmd.PersistentFlags().BoolVarP(&force, "force", "f", false, "Force a refresh even if unexpired credentials exist")
+	rootCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "Enable verbose logging")
+	rootCmd.Flags().DurationVarP(&duration, "duration", "d", time.Hour*36, "amount of time the temporary credentials are valid, min: 15m, max: 36h")
+	rootCmd.Flags().StringVarP(&suffix, "suffix", "s", "permanent", "suffix to append to profile, used to find permanent credentials. results in <profile>-<suffix>")
 	rootCmd.Flags().StringVarP(&mfaSerial, "mfa", "m", "", "The arn of your mfa device, e.g. `arn:aws:iam::<account-id>:mfa/<user>` uses one defined in the credentials file if exists and omitted")
-	rootCmd.Flags().BoolVarP(&force, "force", "f", false, "Force a refresh even if unexpired credentials exist")
-	rootCmd.Flags().BoolVar(&verbose, "verbose", false, "Enable verbose logging")
 }
