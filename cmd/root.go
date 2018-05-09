@@ -42,7 +42,7 @@ var (
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Version: "0.1",
-	Use:   "aws-mfa",
+	Use:   "aws-mfa <profile>",
 	Args: cobra.ExactArgs(1),
 	Short: "Refreshes or generates temporary AWS credentials",
 	Long: `Refreshes or generates temporary AWS credentials via STS. If you use the '--mfa' flag, the ARN will be
@@ -80,10 +80,9 @@ func init() {
 	rootCmd.MarkFlagFilename("credentials")
 
 	rootCmd.PersistentFlags().StringVarP(&credentialsFile, "credentials", "c", external.DefaultSharedCredentialsFilename(), "path to AWS shared credentials file")
-	//rootCmd.PersistentFlags().StringVarP(&profile, "profile", "p", "", "profile used to store temporary credentials")
-	rootCmd.PersistentFlags().BoolVarP(&force, "force", "f", false, "Force a refresh even if unexpired credentials exist")
-	rootCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "Enable verbose logging")
+	rootCmd.PersistentFlags().BoolVarP(&force, "force", "f", false, "force a refresh even if unexpired credentials exist")
+	rootCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "enable verbose logging")
 	rootCmd.Flags().DurationVarP(&duration, "duration", "d", time.Hour*36, "amount of time the temporary credentials are valid, min: 15m, max: 36h")
 	rootCmd.Flags().StringVarP(&suffix, "suffix", "s", "permanent", "suffix to append to profile, used to find permanent credentials. results in <profile>-<suffix>")
-	rootCmd.Flags().StringVarP(&mfaSerial, "mfa", "m", "", "The arn of your mfa device, e.g. `arn:aws:iam::<account-id>:mfa/<user>` uses one defined in the credentials file if exists and omitted")
+	rootCmd.Flags().StringVarP(&mfaSerial, "mfa", "m", "", "arn of your mfa device, e.g. `arn:aws:iam::<account-id>:mfa/<user>` uses one defined in the credentials file if exists and omitted")
 }
