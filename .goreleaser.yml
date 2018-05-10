@@ -9,7 +9,7 @@ builds:
       - linux
     goarch:
       - amd64
-    ldflags: -s -w -X cmd/root.Version={{.Version}}
+    ldflags: "-s -w -X cmd.Version={{.Version}}"
 
 
 changelog:
