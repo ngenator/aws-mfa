@@ -29,6 +29,8 @@ import (
 	"github.com/ngenator/aws-mfa/mfa"
 )
 
+var Version = "0.1"
+
 var (
 	credentialsFile string
 	profile         string
@@ -41,7 +43,7 @@ var (
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Version: "0.1",
+	Version: Version,
 	Use:   "aws-mfa <profile>",
 	Args: cobra.ExactArgs(1),
 	Short: "Refreshes or generates temporary AWS credentials",
