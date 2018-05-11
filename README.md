@@ -1,4 +1,4 @@
-# aws-mfa
+# aws-mfa [![Build Status](https://travis-ci.org/ngenator/aws-mfa.svg?branch=develop)](https://travis-ci.org/ngenator/aws-mfa)
 
 Generates or refreshes temporary aws credentials via STS and stores them to support tools that don't behave nicely when mfa is required.
 To do this, we have the idea of "permanent" credentials and temporary credentials. To support existing scripts/tooling, 
