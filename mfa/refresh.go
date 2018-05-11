@@ -33,6 +33,20 @@ func init() {
 	}
 }
 
+type ConfigValue struct {
+	Profile string
+	Section *ini.Section
+}
+
+type Config struct {
+	Options Options
+
+	Permanent ConfigValue
+	Temporary ConfigValue
+
+	CredentialsFile *ini.File
+}
+
 type Options struct {
 	CredentialsFileLocation string
 	Profile                 string
@@ -43,176 +57,190 @@ type Options struct {
 	Verbose                 bool
 }
 
-func (o Options) GetPermanentProfile() string {
-	return o.Profile + "-" + o.ProfileSuffix
-}
+func (o Options) Validate() (*Config, error) {
+	logger := log.WithField("prefix", "options")
 
-func (o Options) GetSections() (*ini.Section, *ini.Section) {
-	logger := log.WithField("prefix", "refresher")
+	logger.Debugln("Validating options")
+
+	logger.WithFields(logrus.Fields{
+		"--credentials": o.CredentialsFileLocation,
+		"--profile":     o.Profile,
+		"--suffix":      o.ProfileSuffix,
+		"--duration":    o.Duration,
+		"--mfa":         o.MFASerial,
+		"--force":       o.Force,
+		"--verbose":     o.Verbose,
+	}).Debugln("Using the following options")
+
+	permanentProfile := o.Profile + "-" + o.ProfileSuffix
 
 	credentialsFile, err := ini.Load(o.CredentialsFileLocation)
 	if err != nil {
 		logger.WithError(err).Fatalln("Failed to load the credentials file")
+		return nil, err
 	}
 
-	perm, err := credentialsFile.GetSection(o.GetPermanentProfile())
+	perm, err := credentialsFile.GetSection(permanentProfile)
 	if err != nil {
-		logger.WithError(err).Fatalln("Failed to read permanent credentials section")
+		logger.Errorln("Failed to read permanent credentials section")
+		return nil, err
 	}
 
 	temp, err := credentialsFile.GetSection(o.Profile)
 	if err != nil {
-		logger.WithError(err).Debugln("Failed to read temporary credentials section, creating one")
+		logger.Debugln("Failed to read temporary credentials section, creating one")
 		temp = credentialsFile.Section(o.Profile)
 	}
 
-	return perm, temp
+	if o.MFASerial == "" && perm.HasKey(mfaSerialKey) {
+		o.MFASerial = perm.Key(mfaSerialKey).String()
+	}
+
+	return &Config{
+		Options: o,
+
+		Permanent: ConfigValue{
+			Profile: permanentProfile,
+			Section: perm,
+		},
+		Temporary: ConfigValue{
+			Profile: o.Profile,
+			Section: temp,
+		},
+		CredentialsFile: credentialsFile,
+	}, nil
 }
 
 type Refresher struct {
-	log              *logrus.Entry
-	CredentialsFile  *ini.File
-	PermanentSection *ini.Section
-	TemporarySection *ini.Section
-	Options          Options
+	log    *logrus.Entry
+	Config *Config
 }
 
-func NewRefresher(options Options) Refresher {
-	if options.Verbose {
+func NewRefresher(c *Config) (*Refresher, error) {
+	if c.Options.Verbose {
 		log.SetLevel(logrus.DebugLevel)
 	}
 
-	log.WithFields(logrus.Fields{
-		"prefix":            "options",
-		"force":             options.Force,
-		"permanent-profile": options.GetPermanentProfile(),
-		"profile":           options.Profile,
-		"credentials":       options.CredentialsFileLocation,
-		"mfa-serial":        options.MFASerial,
-		"duration":          options.Duration.Seconds(),
-	}).Debugln("Using the following options")
-
-	logger := log.WithField("prefix", "refresher")
-
-	credentialsFile, err := ini.Load(options.CredentialsFileLocation)
-	if err != nil {
-		logger.WithError(err).Fatalln("Failed to load the credentials file")
-	}
-
-	permSection, err := credentialsFile.GetSection(options.GetPermanentProfile())
-	if err != nil {
-		logger.WithError(err).Fatalln("Failed to read permanent credentials section")
-	}
-
-	tempSection, err := credentialsFile.GetSection(options.Profile)
-	if err != nil {
-		logger.WithError(err).Debugln("Failed to read temporary credentials section, creating one")
-		tempSection = credentialsFile.Section(options.Profile)
-	}
-
-	if options.MFASerial == "" && permSection.HasKey(mfaSerialKey) {
-		options.MFASerial = permSection.Key(mfaSerialKey).String()
-	} else {
-		var v string
-		logger.Printf("No MFA serial found, please enter one")
-		if _, err := fmt.Scanln(&v); err != nil {
-			logger.WithError(err).Fatalln("Can't continue without a MFA serial")
-		}
-	}
-
-	return Refresher{
-		log:              logger,
-		CredentialsFile:  credentialsFile,
-		PermanentSection: permSection,
-		TemporarySection: tempSection,
-		Options:          options,
-	}
+	return &Refresher{
+		log:    log.WithField("prefix", "refresher"),
+		Config: c,
+	}, nil
 }
 
 func (r Refresher) GetMFAToken() (string, error) {
-	var v string
-	r.log.Printf("Enter the MFA token code for device %s", r.Options.MFASerial)
-	_, err := fmt.Scanln(&v)
-	return v, err
+	device := r.Config.Options.MFASerial
+	if device == "" {
+		r.log.Printf("No MFA serial found, please enter one")
+		if _, err := fmt.Scanln(&device); err != nil {
+			r.log.Errorln("Can't continue without a MFA serial")
+			return "", err
+		}
+	}
+
+	r.Config.Options.MFASerial = device
+
+	var token string
+	r.log.Printf("Enter the MFA token code for device %s", device)
+	_, err := fmt.Scanln(&token)
+	return token, err
 }
 
-func (r Refresher) Clear() {
+func (r Refresher) Clear() error {
 	r.log.Debugln("Clearing credentials from temporary section")
 
-	r.TemporarySection.DeleteKey(accessKeyIDKey)
-	r.TemporarySection.DeleteKey(secretAccessKey)
-	r.TemporarySection.DeleteKey(sessionTokenKey)
-	r.TemporarySection.DeleteKey(expiresKey)
+	r.Config.Permanent.Section.DeleteKey(mfaSerialKey)
 
-	if err := r.CredentialsFile.SaveTo(r.Options.CredentialsFileLocation); err != nil {
+	r.Config.Temporary.Section.DeleteKey(accessKeyIDKey)
+	r.Config.Temporary.Section.DeleteKey(secretAccessKey)
+	r.Config.Temporary.Section.DeleteKey(sessionTokenKey)
+	r.Config.Temporary.Section.DeleteKey(expiresKey)
+
+	if err := r.Config.CredentialsFile.SaveTo(r.Config.Options.CredentialsFileLocation); err != nil {
 		r.log.WithError(err).Errorln("Failed to clear the temporary credentials")
+		return err
 	}
+
+	return nil
 }
 
-func (r Refresher) Save(credentials *sts.Credentials) {
+func (r Refresher) Save(credentials *sts.Credentials) error {
 	r.log.Debugln("Saving credentials to temporary section")
 
-	r.PermanentSection.Key(mfaSerialKey).SetValue(r.Options.MFASerial)
-
-	r.TemporarySection.Key(accessKeyIDKey).SetValue(aws.StringValue(credentials.AccessKeyId))
-	r.TemporarySection.Key(secretAccessKey).SetValue(aws.StringValue(credentials.SecretAccessKey))
-	r.TemporarySection.Key(sessionTokenKey).SetValue(aws.StringValue(credentials.SessionToken))
-	r.TemporarySection.Key(expiresKey).SetValue(aws.TimeValue(credentials.Expiration).Local().Format(time.RFC3339))
-
-	if err := r.CredentialsFile.SaveTo(r.Options.CredentialsFileLocation); err != nil {
-		r.log.WithError(err).Fatalln("Failed to save the temporary credentials")
+	if r.Config.Options.MFASerial != "" {
+		r.Config.Permanent.Section.Key(mfaSerialKey).SetValue(r.Config.Options.MFASerial)
 	}
+
+	r.Config.Temporary.Section.Key(accessKeyIDKey).SetValue(aws.StringValue(credentials.AccessKeyId))
+	r.Config.Temporary.Section.Key(secretAccessKey).SetValue(aws.StringValue(credentials.SecretAccessKey))
+	r.Config.Temporary.Section.Key(sessionTokenKey).SetValue(aws.StringValue(credentials.SessionToken))
+	r.Config.Temporary.Section.Key(expiresKey).SetValue(aws.TimeValue(credentials.Expiration).Local().Format(time.RFC3339))
+
+	if err := r.Config.CredentialsFile.SaveTo(r.Config.Options.CredentialsFileLocation); err != nil {
+		r.log.Errorln("Failed to save the temporary credentials")
+		return err
+	}
+
+	return nil
 }
 
-func (r Refresher) Refresh() {
+func (r Refresher) Refresh() error {
 	expires := time.Now()
-	if r.TemporarySection.HasKey(expiresKey) {
-		expires, _ = r.TemporarySection.Key(expiresKey).Time()
+	if r.Config.Temporary.Section.HasKey(expiresKey) {
+		expires, _ = r.Config.Temporary.Section.Key(expiresKey).Time()
 	}
 
 	// only refresh if force is set or if the credentials are expired
-	if r.Options.Force || expires.Before(time.Now().Add(time.Hour)) {
-		r.log.WithField("profile", r.Options.Profile).Infoln("Refreshing temporary credentials")
+	if r.Config.Options.Force || expires.Before(time.Now().Add(time.Hour)) {
+		r.log.WithField("profile", r.Config.Options.Profile).Infoln("Refreshing temporary credentials")
 
-		permConfig, err := external.LoadDefaultAWSConfig(
-			external.WithSharedConfigProfile(r.Options.GetPermanentProfile()),
-			external.WithSharedConfigFiles([]string{r.Options.CredentialsFileLocation}),
+		awsConfig, err := external.LoadDefaultAWSConfig(
+			external.WithSharedConfigProfile(r.Config.Permanent.Profile),
+			external.WithSharedConfigFiles([]string{r.Config.Options.CredentialsFileLocation}),
 		)
 		if err != nil {
-			r.log.WithError(err).Fatalln("Failed to load your credentials")
+			r.log.Errorln("Failed to load your credentials")
+			return err
 		}
 
-		svc := sts.New(permConfig)
+		svc := sts.New(awsConfig)
 
-		// grab the mfa token if a mfa serial is provided
-		token := ""
-		if r.Options.MFASerial != "" {
+		// build the request to send to STS
+		input := &sts.GetSessionTokenInput{
+			DurationSeconds: aws.Int64(int64(r.Config.Options.Duration.Seconds())),
+		}
+
+		if r.Config.Options.MFASerial != "" {
+			var token string
 			token, err = r.GetMFAToken()
 			if err != nil {
 				r.log.WithError(err).Fatalln("Couldn't read your MFA token")
 			}
+			input.SerialNumber = aws.String(r.Config.Options.MFASerial)
+			input.TokenCode = aws.String(token)
 		}
 
-		// build the request to send to STS
-		req := svc.GetSessionTokenRequest(&sts.GetSessionTokenInput{
-			DurationSeconds: aws.Int64(int64(r.Options.Duration.Seconds())),
-			SerialNumber:    aws.String(r.Options.MFASerial),
-			TokenCode:       aws.String(token),
-		})
+		// send the request to STS
+		req := svc.GetSessionTokenRequest(input)
 		resp, err := req.Send()
 		if err != nil {
 			r.Clear()
-			r.log.WithError(err).Fatalln("Failed to get session token from STS")
+			r.log.Errorln("Failed to get session token from STS")
+			return err
 		}
 
 		// save the temporary credentials to the credentials file
-		r.Save(resp.Credentials)
+		if err := r.Save(resp.Credentials); err != nil {
+			return err
+		}
 
 		r.log.WithFields(logrus.Fields{
 			"expires": time.Until(resp.Credentials.Expiration.Local()),
-			"profile": r.Options.Profile,
-		}).Infoln("Successfully refreshed your temporary credentials")
+			"profile": r.Config.Options.Profile,
+		}).Println("Successfully refreshed your temporary credentials")
 	} else {
-		r.log.Infoln("Already have credentials that expire in", time.Until(expires), ". Use --force to update anyways")
+		r.log.Println("Already have credentials that expire in", time.Until(expires))
+		r.log.Infoln("Use --force to update anyways")
 	}
+
+	return nil
 }

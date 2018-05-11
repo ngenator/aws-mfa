@@ -22,6 +22,9 @@ package main
 
 import "github.com/ngenator/aws-mfa/cmd"
 
+// Version gets set a build time
+var Version string
+
 func main() {
-	cmd.Execute()
+	cmd.Execute(Version)
 }
