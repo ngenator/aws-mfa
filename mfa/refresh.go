@@ -20,7 +20,7 @@ const (
 	// Optional
 	sessionTokenKey = `aws_session_token` // optional
 
-	// Our additional keeys
+	// Our additional keys
 	mfaSerialKey = `mfa_serial`
 	expiresKey   = `expires`
 )
@@ -30,6 +30,20 @@ var log = logrus.New()
 func init() {
 	log.Formatter = &prefixed.TextFormatter{
 		ForceColors: true,
+	}
+}
+
+type AWSDebugLogger struct {
+	logger *logrus.Entry
+}
+
+func (l AWSDebugLogger) Log(args ...interface{}) {
+	l.logger.Debugln(args...)
+}
+
+func NewAWSDebugLogger(from *logrus.Entry) AWSDebugLogger {
+	return AWSDebugLogger{
+		logger: from,
 	}
 }
 
@@ -59,6 +73,10 @@ type Options struct {
 
 func (o Options) Validate() (*Config, error) {
 	logger := log.WithField("prefix", "options")
+
+	if o.Verbose {
+		log.SetLevel(logrus.DebugLevel)
+	}
 
 	logger.Debugln("Validating options")
 
@@ -117,10 +135,6 @@ type Refresher struct {
 }
 
 func NewRefresher(c *Config) (*Refresher, error) {
-	if c.Options.Verbose {
-		log.SetLevel(logrus.DebugLevel)
-	}
-
 	return &Refresher{
 		log:    log.WithField("prefix", "refresher"),
 		Config: c,
@@ -145,10 +159,13 @@ func (r Refresher) GetMFAToken() (string, error) {
 	return token, err
 }
 
-func (r Refresher) Clear() error {
-	r.log.Debugln("Clearing credentials from temporary section")
+func (r Refresher) Clear(removeMfa bool) error {
+	if removeMfa {
+		r.log.Debugln("Clearing mfa device from permanent section")
+		r.Config.Permanent.Section.DeleteKey(mfaSerialKey)
+	}
 
-	r.Config.Permanent.Section.DeleteKey(mfaSerialKey)
+	r.log.Debugln("Clearing credentials from temporary section")
 
 	r.Config.Temporary.Section.DeleteKey(accessKeyIDKey)
 	r.Config.Temporary.Section.DeleteKey(secretAccessKey)
@@ -202,6 +219,11 @@ func (r Refresher) Refresh() error {
 			return err
 		}
 
+		awsConfig.Logger = NewAWSDebugLogger(r.log)
+		if r.Config.Options.Verbose  {
+			awsConfig.LogLevel = aws.LogDebugWithSigning
+		}
+
 		svc := sts.New(awsConfig)
 
 		// build the request to send to STS
@@ -223,8 +245,12 @@ func (r Refresher) Refresh() error {
 		req := svc.GetSessionTokenRequest(input)
 		resp, err := req.Send()
 		if err != nil {
-			r.Clear()
-			r.log.Errorln("Failed to get session token from STS")
+			r.log.WithError(err).Errorln("Failed to get session token from STS")
+			if r.Config.Options.MFASerial != "" {
+				r.Clear(true)
+			}
+			r.Clear(false)
+
 			return err
 		}
 
