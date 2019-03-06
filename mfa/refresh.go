@@ -161,7 +161,7 @@ func (r Refresher) GetMFAToken() (string, error) {
 
 func (r Refresher) Clear(removeMfa bool) error {
 	if removeMfa {
-		r.log.Debugln("Clearing mfa device from permanent section")
+		r.log.Infoln("Clearing mfa device from permanent section")
 		r.Config.Permanent.Section.DeleteKey(mfaSerialKey)
 	}
 
@@ -181,11 +181,18 @@ func (r Refresher) Clear(removeMfa bool) error {
 }
 
 func (r Refresher) Save(credentials *sts.Credentials) error {
-	r.log.Debugln("Saving credentials to temporary section")
-
 	if r.Config.Options.MFASerial != "" {
-		r.Config.Permanent.Section.Key(mfaSerialKey).SetValue(r.Config.Options.MFASerial)
+		oldSerial := r.Config.Permanent.Section.Key(mfaSerialKey).String()
+		newSerial := r.Config.Options.MFASerial
+		if oldSerial != newSerial  {
+			r.log.WithFields(logrus.Fields{"old": oldSerial, "new": newSerial}).Infoln("Updating saved MFA serial")
+		} else {
+			r.log.Infoln("Saving MFA serial to permanent section")
+		}
+		r.Config.Permanent.Section.Key(mfaSerialKey).SetValue(newSerial)
 	}
+
+	r.log.Infoln("Saving credentials to temporary section")
 
 	r.Config.Temporary.Section.Key(accessKeyIDKey).SetValue(aws.StringValue(credentials.AccessKeyId))
 	r.Config.Temporary.Section.Key(secretAccessKey).SetValue(aws.StringValue(credentials.SecretAccessKey))
@@ -239,6 +246,9 @@ func (r Refresher) Refresh() error {
 			}
 			input.SerialNumber = aws.String(r.Config.Options.MFASerial)
 			input.TokenCode = aws.String(token)
+		} else {
+			r.log.Warnln("No MFA Serial provided, your temporary credentials may not work as expected")
+			r.log.Infoln("Use --mfa to provide an MFA device")
 		}
 
 		// send the request to STS
@@ -246,11 +256,7 @@ func (r Refresher) Refresh() error {
 		resp, err := req.Send()
 		if err != nil {
 			r.log.WithError(err).Errorln("Failed to get session token from STS")
-			if r.Config.Options.MFASerial != "" {
-				r.Clear(true)
-			}
 			r.Clear(false)
-
 			return err
 		}
 
