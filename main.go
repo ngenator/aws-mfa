@@ -1,4 +1,4 @@
-// Copyright © 2018 Daniel Ng <dan@ngenator.com>
+// Copyright © 2018 Daniel Ng <dan@RueLaLa.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,7 +20,7 @@
 
 package main
 
-import "github.com/ngenator/aws-mfa/cmd"
+import "github.com/RueLaLa/aws-mfa/cmd"
 
 // Version gets set a build time
 var Version string

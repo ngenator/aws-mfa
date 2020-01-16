@@ -1,4 +1,4 @@
-// Copyright © 2018 Daniel Ng <dan@ngenator.com>
+// Copyright © 2018 Daniel Ng <dan@RueLaLa.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -25,7 +25,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws/external"
-	"github.com/ngenator/aws-mfa/mfa"
+	"github.com/RueLaLa/aws-mfa/mfa"
 	"github.com/spf13/cobra"
 )
 
