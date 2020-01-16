@@ -27,11 +27,11 @@
 
 [[constraint]]
   name = "github.com/aws/aws-sdk-go-v2"
-  version = "2.0.0-preview.3"
+  version = "v0.18.0"
 
 [[constraint]]
   name = "github.com/spf13/cobra"
-  version = "0.0.2"
+  version = "v0.0.5"
 
 [prune]
   go-tests = true
