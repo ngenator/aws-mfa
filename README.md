@@ -79,6 +79,7 @@ $ ./aws-mfa --profile <my-other-profile>
 The MIT License (MIT)
 
 Copyright © 2018 Daniel Ng <dan@ngenator.com>
+Copyright © 2019 Nick Silverman <nckslvrmn@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
