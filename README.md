@@ -1,7 +1,7 @@
 # aws-mfa [![Build Status](https://travis-ci.org/ngenator/aws-mfa.svg?branch=develop)](https://travis-ci.org/ngenator/aws-mfa)
 
 Generates or refreshes temporary aws credentials via STS and stores them to support tools that don't behave nicely when mfa is required.
-To do this, we have the idea of "permanent" credentials and temporary credentials. To support existing scripts/tooling, 
+To do this, we have the idea of "permanent" credentials and temporary credentials. To support existing scripts/tooling,
 the tool looks for a permanent profile using a suffix rather than generating a temporary profile with one.
 
 ## Features
@@ -11,13 +11,13 @@ the tool looks for a permanent profile using a suffix rather than generating a t
   * Stores your mfa serial in the credentials file
   * Customizable suffix for the "permanent" credentials
   * Customizable duration (within the limits of STS)
-  
+
 
 ## Install
 
 Head over to [releases](https://github.com/ngenator/aws-mfa/releases) and download the latest version for your OS/Architecture, and place the extracted binary in your PATH.
 
-## Usage 
+## Usage
 ```
 $ ./aws-mfa -h
 Refreshes or generates temporary AWS credentials via STS. If you use the '--mfa' flag, the ARN will be
@@ -79,6 +79,7 @@ $ ./aws-mfa --profile <my-other-profile>
 The MIT License (MIT)
 
 Copyright © 2018 Daniel Ng <dan@ngenator.com>
+Copyright © 2020 Nick Silverman <nckslvrmn@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

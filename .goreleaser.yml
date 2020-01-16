@@ -19,13 +19,14 @@ changelog:
     - Merge pull request
     - Merge branch
 
-archive:
-  format_overrides:
-    - goos: windows
-      format: zip
-  name_template: "{{.ProjectName}}-{{.Version}}-{{.Os}}-{{.Arch}}"
-  replacements:
-    amd64: amd64
-    darwin: mac
-    linux: linux
-    windows: windows
+archives:
+  - id: default
+    format_overrides:
+      - goos: windows
+        format: zip
+    name_template: "{{.ProjectName}}-{{.Version}}-{{.Os}}-{{.Arch}}"
+    replacements:
+      amd64: amd64
+      darwin: mac
+      linux: linux
+      windows: windows
