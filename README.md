@@ -15,7 +15,7 @@ the tool looks for a permanent profile using a suffix rather than generating a t
 
 ## Install
 
-Head over to [releases](https://github.com/ngenator/aws-mfa/releases) and download the latest version for your OS/Architecture, and place the extracted binary in your PATH.
+Head over to [releases](https://github.com/RueLaLa/aws-mfa/releases) and download the latest version for your OS/Architecture, and place the extracted binary in your PATH.
 
 ## Usage
 ```
