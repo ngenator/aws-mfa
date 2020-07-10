@@ -21,7 +21,7 @@
 
 package main
 
-import "github.com/RueLaLa/aws-mfa/cmd"
+import "github.com/ruelala/aws-mfa/cmd"
 
 // Version gets set a build time
 var Version string

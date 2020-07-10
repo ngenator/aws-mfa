@@ -27,7 +27,6 @@ import (
   "time"
 
   "github.com/aws/aws-sdk-go-v2/aws"
-  "github.com/aws/aws-sdk-go-v2/aws/endpoints"
   "github.com/aws/aws-sdk-go-v2/aws/external"
   "github.com/aws/aws-sdk-go-v2/service/sts"
   "github.com/go-ini/ini"
@@ -254,7 +253,7 @@ func (r Refresher) Refresh() error {
       awsConfig.LogLevel = aws.LogDebugWithSigning
     }
 
-    awsConfig.Region = endpoints.UsEast1RegionID
+    awsConfig.Region = "us-east-1"
 
     svc := sts.New(awsConfig)
 
