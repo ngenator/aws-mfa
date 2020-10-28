@@ -1,24 +1,3 @@
-// Copyright © 2018 Daniel Ng <dan@RueLaLa.com>
-// Copyright © 2020 Nick Silverman <nckslvrmn@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-// THE SOFTWARE.
-
 package mfa
 
 import (
@@ -27,7 +6,7 @@ import (
   "time"
 
   "github.com/aws/aws-sdk-go-v2/aws"
-  "github.com/aws/aws-sdk-go-v2/aws/external"
+  "github.com/aws/aws-sdk-go-v2/config"
   "github.com/aws/aws-sdk-go-v2/service/sts"
   "github.com/go-ini/ini"
   "github.com/sirupsen/logrus"
@@ -239,21 +218,10 @@ func (r Refresher) Refresh() error {
   if r.Config.Options.Force || expires.Before(time.Now().Add(time.Hour)) {
     r.log.WithField("profile", r.Config.Options.Profile).Infoln("Refreshing temporary credentials")
 
-    awsConfig, err := external.LoadDefaultAWSConfig(
-      external.WithSharedConfigProfile(r.Config.Permanent.Profile),
-      external.WithSharedConfigFiles([]string{r.Config.Options.CredentialsFileLocation}),
+    awsConfig, err := config.LoadDefaultConfig(
+      config.WithSharedConfigProfile(r.Config.Permanent.Profile),
+      config.WithSharedConfigFiles([]string{r.Config.Options.CredentialsFileLocation}),
     )
-    if err != nil {
-      r.log.Errorln("Failed to load your credentials")
-      return err
-    }
-
-    awsConfig.Logger = NewAWSDebugLogger(r.log)
-    if r.Config.Options.Verbose  {
-      awsConfig.LogLevel = aws.LogDebugWithSigning
-    }
-
-    awsConfig.Region = "us-east-1"
 
     svc := sts.New(awsConfig)
 

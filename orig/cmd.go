@@ -25,7 +25,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/aws/external"
+	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/ruelala/aws-mfa/mfa"
 	"github.com/spf13/cobra"
 )
