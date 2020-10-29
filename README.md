@@ -8,7 +8,7 @@ the tool looks for a permanent profile using a suffix rather than generating a t
 ## Features
 
   * Stores generated credentials in your credentials file for reuse
-  * Expiration is stored in the credentials file to prevent unnecessary refreshes (can be overridden with `--force`)
+  * Expiration is stored in the credentials file to prevent unnecessary refreshes (can be overridden with `-f/-force`)
   * Stores your mfa serial in the credentials file
   * Customizable suffix for the "permanent" credentials
   * Customizable duration (within the limits of STS)
@@ -21,23 +21,17 @@ Head over to [releases](https://github.com/RueLaLa/aws-mfa/releases) and downloa
 ## Usage
 ```
 $ ./aws-mfa -h
-Refreshes or generates temporary AWS credentials via STS. If you use the '--mfa' flag, the ARN will be
-stored in the credentials file so you don't have to pass it every time. If you already have credentials with an
+Refreshes or generates temporary AWS credentials via STS. If you already have credentials with an
 expiration that's an hour out or further, they won't be refreshed unless you use the '--force' flag.
 
 Usage:
   aws-mfa [flags]
 
 Flags:
-  -c, --credentials string                         path to AWS shared credentials file (default "/Users/dng/.aws/credentials")
-  -d, --duration duration                          amount of time the temporary credentials are valid, min: 15m, max: 36h (default 36h0m0s)
   -f, --force                                      force a refresh even if unexpired credentials exist
   -h, --help                                       help for aws-mfa
-  -m, --mfa arn:aws:iam::<account-id>:mfa/<user>   arn of your mfa device, e.g. arn:aws:iam::<account-id>:mfa/<user> uses one defined in the credentials file if exists and omitted
   -p, --profile string                             profile that will contain the temporary credentials within the AWS shared credentials file (default "default")
   -s, --suffix string                              suffix to append to profile, used to find permanent credentials. results in <profile>-<suffix> (default "permanent")
-      --verbose                                    enable verbose logging
-      --version                                    version for aws-mfa
 ```
 
 ## Example
@@ -74,3 +68,4 @@ If you don't provide a profile with the `--profile` flag, it will use the value 
 
 ```
 $ ./aws-mfa --profile <my-other-profile>
+```
