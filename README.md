@@ -1,5 +1,7 @@
 # aws-mfa [![Build Status](https://travis-ci.org/ngenator/aws-mfa.svg?branch=develop)](https://travis-ci.org/ngenator/aws-mfa)
 
+Highly recommend using [aws-vault](https://github.com/99designs/aws-vault) instead. You can setup your `~/.aws/config` in a way that mimics the functionality here, while keeping your credentials in a secure backend. Use [`credential_process`](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-sourcing-external.html) which is [supported by aws-vault](https://github.com/99designs/aws-vault/blob/master/USAGE.md#using-credential_process) to provide credentials to profiles with a role and you're good to go.
+
 Generates or refreshes temporary aws credentials via STS and stores them to support tools that don't behave nicely when mfa is required.
 To do this, we have the idea of "permanent" credentials and temporary credentials. To support existing scripts/tooling, 
 the tool looks for a permanent profile using a suffix rather than generating a temporary profile with one.
